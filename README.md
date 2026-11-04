@@ -45,7 +45,7 @@ Secret del repository (Settings → Secrets and variables → Actions):
 | Secret | Cos'è |
 |---|---|
 | `GMAIL_LETTURA_PASSWORD` | App Password dell'account che **riceve** le newsletter (in `config.yaml` → `lettura.account`). Il programma apre la casella in sola lettura e non segna nulla come letto |
-| `GMAIL_MITTENTE`, `GMAIL_PASSWORD` | account che invia l'email finale (App Password Gmail, come le altre newsletter) |
+| `GMAIL_MITTENTE`, `GMAIL_PASSWORD` | facoltativi: account diverso da cui inviare. Se mancano, l'email parte dall'account di lettura verso se stesso |
 
 ## Esecuzione
 

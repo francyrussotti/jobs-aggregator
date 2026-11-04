@@ -1,6 +1,7 @@
 """Invio dell'email finale via SMTP Gmail (App Password).
 
-Variabili d'ambiente: GMAIL_MITTENTE, GMAIL_PASSWORD (App Password).
+Mittente: GMAIL_MITTENTE + GMAIL_PASSWORD se impostati, altrimenti l'account di
+lettura (config.yaml → lettura.account) con GMAIL_LETTURA_PASSWORD.
 """
 import os
 import smtplib
@@ -14,7 +15,11 @@ def invia(cfg, oggetto, html, testo, allegati=()):
     mittente = os.environ.get("GMAIL_MITTENTE", "").strip()
     password = "".join(os.environ.get("GMAIL_PASSWORD", "").split())
     if not mittente or not password:
-        raise RuntimeError("GMAIL_MITTENTE / GMAIL_PASSWORD mancanti")
+        # Senza un mittente dedicato si invia dall'account che legge (a se stessi)
+        mittente = cfg["lettura"]["account"]
+        password = "".join(os.environ.get("GMAIL_LETTURA_PASSWORD", "").split())
+    if not password:
+        raise RuntimeError("Nessuna password per l'invio (GMAIL_LETTURA_PASSWORD)")
     e = cfg["email"]
     msg = MIMEMultipart("mixed")
     msg["Subject"], msg["From"], msg["To"] = oggetto, mittente, e["destinatario"]
