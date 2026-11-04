@@ -1,0 +1,151 @@
+# Jobs Aggregator — configurazione
+# Tutte le regole di filtro stanno qui: per cambiarle non serve toccare il codice.
+# Le parole chiave sono espressioni regolari (Python), confrontate senza
+# distinzione tra maiuscole/minuscole e senza accenti.
+
+fuso_orario: Europe/Rome
+
+# --- Newsletter da leggere (Gmail, sola lettura) ---------------------------
+# L'ordine conta: è l'ordine delle sezioni nell'email e, in caso di doppioni,
+# vince la fonte che viene prima.
+newsletter:
+  - fonte: Big4 Jobs
+    parser: big4
+    query: 'from:jobnewsletter.fra@gmail.com subject:"Big4 Jobs"'
+  - fonte: Paris Jobs
+    parser: paris
+    query: 'from:jobnewsletter.fra@gmail.com subject:"Paris Jobs"'
+  - fonte: Aziende Target
+    parser: aziende_target
+    query: 'from:jobnewsletter.fra@gmail.com subject:"Aziende Target" -subject:riepilogo'
+
+# --- Email finale ---------------------------------------------------------
+email:
+  destinatario: francy.russotti@gmail.com
+  oggetto: "Jobs Aggregator"
+  smtp_host: smtp.gmail.com
+  smtp_porta: 465
+  allega_csv: true
+
+# --- Orari ----------------------------------------------------------------
+# Il workflow parte più volte al giorno. Se manca una newsletter e l'ora UTC
+# è prima di questo limite, la run aspetta la successiva; dal limite in poi
+# invia comunque, indicando quale newsletter manca.
+attesa:
+  invia_comunque_dopo_ora_utc: 18
+
+# --- Sedi -----------------------------------------------------------------
+sedi:
+  ammesse:
+    Roma: ['roma', 'rome']
+    Milano: ['milano', 'milan']
+    Torino: ['torino', 'turin']
+    Parigi: ['paris', 'parigi', 'la defense']
+    Amsterdam: ['amsterdam']
+    Bruxelles/Diegem: ['bruxelles', 'brussels', 'brussel', 'diegem']
+  # Comuni vicini: l'offerta va in "Da controllare" invece di essere scartata
+  vicine:
+    Milano: ['assago', 'sesto san giovanni', 'segrate', 'rho', 'cinisello']
+    Parigi: ['ile-de-france', 'idf', 'courbevoie', 'puteaux', 'boulogne', 'issy',
+             'levallois', 'neuilly', 'nanterre', 'saint-denis', 'montrouge', 'clichy',
+             'massy', 'velizy', 'plessis-robinson', 'saclay', 'rueil']
+    Amsterdam: ['amstelveen', 'schiphol', 'hoofddorp']
+    Bruxelles/Diegem: ['zaventem', 'machelen', 'evere', 'woluwe', 'ixelles', 'anderlecht']
+  # Sede indicata solo come paese o "remote" in uno di questi paesi → Da controllare
+  paesi_da_controllare: ['italy', 'italia', 'france', 'francia', 'netherlands', 'nederland',
+                         'paesi bassi', 'belgium', 'belgique', 'belgie', 'belgio', 'remote',
+                         'remoto', 'hybrid', 'europe', 'emea', 'tbd']
+
+# --- Ruoli ----------------------------------------------------------------
+ruoli:
+  titoli_vuoti: ['^$', '^n/?d$', '^annuncio$', '^-+$', '^untitled$', '^job$']
+
+  # ESCLUSI sempre (motivo → espressioni)
+  escludi:
+    stage/internship/tesi: ['\bintern(ship)?s?\b', '\bstage\b', '\bstagiair', '\bstagiaire\b',
+                            '\btirocin', '\bthesis\b', '\btesi\b', '\bafstudeer', '\bwerkstudent',
+                            '\bworking student\b', '\balternan(ce|t)\b', '\bapprenti',
+                            '\bplacement\b', '\bsummer\b', '\bwinter school\b']
+    ruolo senior: ['\bsenior\b', '\bsr\.?(\s|$)', '\bdirector\b', '\bdirettore\b', '\bdirecteur',
+                   '\bhead\b', '\bpartner\b', '\bprincipal\b', '\bvp\b', '\bvice[ -]president',
+                   '\bchief\b', '\bc[eftmio]o\b(?! (services|advisory|office|agenda))', '\bexecutive director\b', '\bteam ?lead',
+                   '\blead\b(?! gen)', '\bresponsabile\b', '\bexpert\b', '\bspecialista senior']
+    ruolo tecnico: ['(?<!business )\bdeveloper', '\bsviluppat', '\bdevelop(pe)?ur', '\bengineer', '\bingegner',
+                    '\bingenieur', '\bsoftware\b', '\bdevops\b', '\bcyber', '\bsecurity\b',
+                    '\bsicurezza informatica', '\bsap\b', '\bcloud\b', '\bit project manag',
+                    '\bit pm\b', '\bit manager', '\barchitect', '\bprogrammer', '\bprogrammat',
+                    '\bdata (engineer|scientist)', '\bmachine learning', '\bml\b', '\bqa\b',
+                    '\btester\b', '\bsysadmin', '\bnetwork (engineer|administrator|security|architect)', '\btechnician', '\btecnico\b',
+                    '\btecnic[oa]/a', '\bsalesforce\b', '\bservicenow\b', '\boutsystems\b',
+                    '\bjava\b', '\bpython\b', '\.net\b', '\bfull[ -]?stack', '\bfront[ -]?end',
+                    '\bback[ -]?end', '\bpower bi\b', '\bdatabase\b',
+                    '\bsystem administrator', '\bmainframe', '\bit infrastructure', '\bsoc\b',
+                    '\bservice desk', '\bhelp ?desk', '\bit support', '\bbim\b', '\bcrm\b',
+                    '\bfunctional (consultant|analyst)', '\btechnical consultant']
+    ruolo sales puro: ['\bsales\b', '\bsdr\b', '\bbdr\b', '\baccount executive', '\baccount manager',
+                       '\binside sales', '\bsales development', '\bbusiness development representative',
+                       '\bvendit', '\bcommerciale\b', '\btelesales', '\bkey account',
+                       '\bcustomer success']
+
+  # "manager" escluso, salvo queste eccezioni (portfolio/platform in VC)
+  manager: '\bmanager\b|\bmanaging\b'
+  manager_ammessi: ['\bplatform manager', '\bportfolio (monitoring )?manager', '\bcommunity manager',
+                    '\becosystem manager']
+  # "manager" che può essere mid-level → Da controllare
+  manager_da_controllare: ['\bassistant manager', '\bjunior .*manager', '\bproject manager',
+                           '\bprogramme manager', '\bprogram manager']
+
+  # INCLUSI: ambiti cercati (nome → espressioni)
+  includi:
+    innovation consulting: ['\binnovat', '\binnovazion', '\binnovatie', '\bopen innovation',
+                            '\br&d\b', '\bricerca e sviluppo', '\btech transfer', '\btrasferimento tecnologico']
+    business development: ['\bbusiness develop', '\bbiz ?dev', '\bpartnerships?\b', '\bsviluppo (del )?business']
+    bandi e fondi: ['\bgrants?\b', '\bfunding\b', '\bfunded\b', '\bfondi\b', '\bbandi\b', '\bbando\b',
+                    '\bfinanza agevolata', '\bagevolat', '\bfinanziament', '\bsubsid', '\bincentiv',
+                    '\bpnrr\b', '\bhorizon\b', '\beu projects?', '\beuropean projects?',
+                    '\bprogetti europei', '\bprogetti ue', '\beu affairs', '\bpublic funding',
+                    '\bcredito d.imposta', '\br&d tax', '\bproject officer', '\bproposal',
+                    '\beu (consultant|advisory|funds?|programmes?)']
+    energia: ['\benerg', '\brenewabl', '\brinnovabil', '\bhydrogen', '\bidrogeno', '\bwaterstof',
+              '\bsolar', '\bwind\b', '\butilit(y|ies)\b', '\bdecarboni', '\bnet zero', '\bpower & utilities']
+    spazio: ['\bspace\b', '\bspazio\b', '\baerospa', '\bsatellit', '\bspatial', '\bnew space']
+    open innovation e startup: ['\bstart-?ups?\b', '\bscale-?ups?\b', '\bventure', '\baccelerat',
+                                '\bincubat', '\becosystem', '\becosistema', '\bscouting',
+                                '\bcorporate venturing']
+    vc portfolio/platform: ['\bportfolio\b', '\bplatform (manager|associate|team|analyst)',
+                            '\bvalue creation', '\binvestment (analyst|associate)', '\bvc\b']
+
+  # Aree non cercate: con un ambito cercato → Da controllare; senza → Escluso
+  aree_non_pertinenti: ['\baudit', '\bassurance\b', '\brevision', '\btax\b', '\bfiscal', '\btributar',
+                        '\blegal', '\blegale\b', '\blawyer', '\bavvocat', '\bpayroll', '\baccount(ing|ant)',
+                        '\bcontabil', '\bbookkeep', '\bdeals?\b', '\bm&a\b', '\bvaluation', '\btransaction',
+                        '\bcorporate finance', '\brisk\b', '\bcompliance', '\baml\b', '\bregulatory',
+                        '\bactuar', '\battuari', '\bforensic', '\bprivacy', '\bgdpr', '\bhr\b',
+                        '\brecruit', '\btalent acquisition', '\bpaie\b', '\bmedical', '\bnurse', '\bfraud', '\bpeople\b',
+                        '\btalent\b', '\bhuman capital', '\bleadership development',
+                        '\blearning (&|and) development', '\breception', '\bservizi generali',
+                        '\binkoper', '\bprocurement', '\bmedewerker']
+
+  # Titoli generici senza ambito chiaro → Da controllare
+  generici: ['\bconsultant', '\bconsulente', '\bconsulting', '\badvisory', '\badvisor', '\bstrategy',
+             '\bstrateg', '\bbusiness analyst', '\banalyst', '\banalista', '\bassociate\b',
+             '\bproject coordinator', '\bprogramme officer', '\bgraduate', '\btrainee', '\bneolaureat']
+
+  # Titoli in francese (solo per offerte a Parigi) → Da controllare
+  titolo_francese: ['\bh/f\b', '\bf/h\b', '\(h/f\)', '\bcharge(e)? d', '\bchef de\b', '\bconseill',
+                    '\bresponsable\b', '\bgestionnaire', '\bcoordinat(eur|rice)\b', '\bdeveloppement\b']
+
+# Annuncio pubblicato da più di N giorni (data della fonte) → Da controllare
+giorni_annuncio_vecchio: 60
+
+# --- Riepilogo del lunedì -------------------------------------------------
+lunedi:
+  attivo: true
+  quante_aziende: 10
+  # File pubblici del repo Aziende Target, letti in sola lettura
+  url_aziende: https://raw.githubusercontent.com/francyrussotti/aziende-target-jobs-newsletter/main/dati/aziende.json
+  url_fonti: https://raw.githubusercontent.com/francyrussotti/aziende-target-jobs-newsletter/main/dati/fonti.json
+  url_fonti_manuali: https://raw.githubusercontent.com/francyrussotti/aziende-target-jobs-newsletter/main/dati/fonti_manuali.json
+  url_seen: https://raw.githubusercontent.com/francyrussotti/aziende-target-jobs-newsletter/main/dati/seen.json
+  # Solo aziende con sede in queste zone (campo "k" della lista); vuoto = tutte
+  zone: ['PAR', 'IT', 'IT+PAR']

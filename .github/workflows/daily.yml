@@ -1,0 +1,53 @@
+name: Jobs Aggregator
+
+on:
+  schedule:
+    # Orari UTC, dopo l'arrivo delle tre newsletter (Aziende Target ~06:15,
+    # Paris ~10:00, Big4 ~10:30-11:00 UTC; i cron di GitHub ritardano spesso).
+    # La prima run con tutte e tre le newsletter invia; le altre vedono l'email
+    # già inviata e si fermano. Dalle 18 UTC si invia anche se ne manca una.
+    - cron: "37 13 * * *"
+    - cron: "37 15 * * *"
+    - cron: "7 18 * * *"
+  workflow_dispatch:
+    inputs:
+      forza:
+        description: "Invia anche se l'email di oggi è già partita o manca una newsletter"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: aggregator
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Aggrega e invia
+        env:
+          GMAIL_CLIENT_ID: ${{ secrets.GMAIL_CLIENT_ID }}
+          GMAIL_CLIENT_SECRET: ${{ secrets.GMAIL_CLIENT_SECRET }}
+          GMAIL_REFRESH_TOKEN: ${{ secrets.GMAIL_REFRESH_TOKEN }}
+          GMAIL_MITTENTE: ${{ secrets.GMAIL_MITTENTE }}
+          GMAIL_PASSWORD: ${{ secrets.GMAIL_PASSWORD }}
+        run: python -m aggregator.main ${{ inputs.forza && '--forza' || '' }}
+      # CSV e log restano 30 giorni tra gli "artifact" della run (il repo è
+      # pubblico: i dati non vengono mai salvati nel repository).
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: output-${{ github.run_id }}
+          path: output/
+          retention-days: 30
+          if-no-files-found: ignore
