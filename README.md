@@ -1,6 +1,6 @@
 # Jobs Aggregator
 
-Legge ogni giorno da Gmail (solo lettura) le tre newsletter di offerte
+Legge ogni giorno da Gmail (IMAP in sola lettura) le tre newsletter di offerte
 — **Big4 Jobs**, **Paris Jobs**, **Aziende Target** — le porta in un formato
 comune, toglie i doppioni, le filtra e invia un'unica email con due sezioni:
 **Match** e **Da controllare**. Nessun punteggio, nessun ordinamento per
@@ -44,7 +44,7 @@ Secret del repository (Settings → Secrets and variables → Actions):
 
 | Secret | Cos'è |
 |---|---|
-| `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN` | accesso Gmail **in sola lettura** all'account che riceve le newsletter: vedi `scripts/ottieni_refresh_token.py` |
+| `GMAIL_LETTURA_PASSWORD` | App Password dell'account che **riceve** le newsletter (in `config.yaml` → `lettura.account`). Il programma apre la casella in sola lettura e non segna nulla come letto |
 | `GMAIL_MITTENTE`, `GMAIL_PASSWORD` | account che invia l'email finale (App Password Gmail, come le altre newsletter) |
 
 ## Esecuzione

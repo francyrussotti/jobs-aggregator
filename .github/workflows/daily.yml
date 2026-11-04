@@ -36,9 +36,7 @@ jobs:
       - run: pip install -r requirements.txt
       - name: Aggrega e invia
         env:
-          GMAIL_CLIENT_ID: ${{ secrets.GMAIL_CLIENT_ID }}
-          GMAIL_CLIENT_SECRET: ${{ secrets.GMAIL_CLIENT_SECRET }}
-          GMAIL_REFRESH_TOKEN: ${{ secrets.GMAIL_REFRESH_TOKEN }}
+          GMAIL_LETTURA_PASSWORD: ${{ secrets.GMAIL_LETTURA_PASSWORD }}
           GMAIL_MITTENTE: ${{ secrets.GMAIL_MITTENTE }}
           GMAIL_PASSWORD: ${{ secrets.GMAIL_PASSWORD }}
         run: python -m aggregator.main ${{ inputs.forza && '--forza' || '' }}

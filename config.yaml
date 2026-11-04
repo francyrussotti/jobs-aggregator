@@ -5,7 +5,13 @@
 
 fuso_orario: Europe/Rome
 
-# --- Newsletter da leggere (Gmail, sola lettura) ---------------------------
+# --- Lettura Gmail (IMAP in sola lettura, App Password nel secret
+#     GMAIL_LETTURA_PASSWORD) -------------------------------------------------
+lettura:
+  account: francy.russotti@gmail.com
+  imap_host: imap.gmail.com
+
+# --- Newsletter da leggere --------------------------------------------------
 # L'ordine conta: è l'ordine delle sezioni nell'email e, in caso di doppioni,
 # vince la fonte che viene prima.
 newsletter:

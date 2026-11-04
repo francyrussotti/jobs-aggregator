@@ -72,7 +72,7 @@ def main(argv=None):
         lettore = LettoreCartella(args.cartella, fuso)
     else:
         from .gmail_reader import LettoreGmail
-        lettore = LettoreGmail(fuso)
+        lettore = LettoreGmail(cfg)
 
     invio = args.giorni == 1 and not args.no_email
     data_it = oggi.strftime("%d/%m/%Y")

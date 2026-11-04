@@ -4,6 +4,7 @@ from aggregator.filters import CONTROLLARE, ESCLUSO, MATCH, Filtro, deduplica
 from aggregator.main import carica_config
 from aggregator.models import Email, Offerta
 from aggregator.parsers import parse_aziende_target, parse_big4, parse_paris
+from aggregator.gmail_reader import LettoreGmail
 from aggregator.weekly import chiave_fonte
 
 CFG = carica_config()
@@ -142,6 +143,46 @@ class TestLunedi(unittest.TestCase):
         self.assertEqual(chiave_fonte({"tipo": "workday",
                                        "url": "https://thales.wd3.myworkdayjobs.com/fr-FR/Careers"}),
                          "workday:thales.wd3.myworkdayjobs.com/Careers")
+
+
+class ImapFinto:
+    """Registra i comandi: niente rete, e si verifica che siano solo di lettura."""
+
+    def __init__(self, grezzo):
+        self.grezzo, self.comandi = grezzo, []
+
+    def list(self):
+        return "OK", [b'(\\HasNoChildren) "/" "INBOX"',
+                      b'(\\All \\HasNoChildren) "/" "[Gmail]/Tutti i messaggi"']
+
+    def select(self, cartella, readonly=False):
+        self.comandi.append(("select", cartella, readonly))
+        return "OK", [b"1"]
+
+    def uid(self, comando, *args):
+        self.comandi.append((comando,) + args)
+        if comando == "SEARCH":
+            return "OK", [b"42"]
+        return "OK", [(b"42 (BODY[] {10}", self.grezzo), b")"]
+
+
+class TestImap(unittest.TestCase):
+    def test_sola_lettura(self):
+        grezzo = (b"Subject: =?utf-8?q?Paris_Jobs_04/11?=\r\nDate: Wed, 04 Nov 2026 10:06:28 +0000\r\n"
+                  b"MIME-Version: 1.0\r\nContent-Type: multipart/alternative; boundary=X\r\n\r\n"
+                  b"--X\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n" + PARIS.encode() +
+                  b"\r\n--X\r\nContent-Type: text/html; charset=utf-8\r\n\r\n<p>x</p>\r\n--X--\r\n")
+        imap = ImapFinto(grezzo)
+        lettore = LettoreGmail(CFG, conn=imap)
+        from datetime import date
+        email = lettore.newsletter_del_giorno(CFG["newsletter"][1], date(2026, 11, 4))
+        self.assertEqual(imap.comandi[0], ("select", '"[Gmail]/Tutti i messaggi"', True))
+        self.assertEqual(imap.comandi[1][:2], ("SEARCH", "X-GM-RAW"))
+        self.assertIn('subject:\\"Paris Jobs\\"', imap.comandi[1][2])
+        self.assertEqual(imap.comandi[2], ("FETCH", b"42", "(BODY.PEEK[])"))
+        self.assertTrue(all(c[0] in ("select", "SEARCH", "FETCH") for c in imap.comandi))
+        self.assertEqual((email[0].data, email[0].oggetto), ("2026-11-04", "Paris Jobs 04/11"))
+        self.assertEqual(len(parse_paris(email[0]).offerte), 2)
 
 
 if __name__ == "__main__":
