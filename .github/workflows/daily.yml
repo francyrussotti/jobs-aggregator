@@ -2,17 +2,18 @@ name: Jobs Aggregator
 
 on:
   schedule:
-    # Orari UTC, dopo l'arrivo delle tre newsletter (Aziende Target ~06:15,
-    # Paris ~10:00, Big4 ~10:30-11:00 UTC; i cron di GitHub ritardano spesso).
-    # La prima run con tutte e tre le newsletter invia; le altre vedono l'email
-    # già inviata e si fermano. Dalle 18 UTC si invia anche se ne manca una.
-    - cron: "37 13 * * *"
-    - cron: "37 15 * * *"
-    - cron: "7 18 * * *"
+    # Edizione SETTIMANALE (dal 10/11/2026, chiesto dall'utente): ogni lunedì, orari UTC, dopo l'arrivo
+    # delle newsletter (Aziende Target, ora settimanale, ~06:15 ma con ore di ritardo; Paris ~10:00,
+    # Big4 ~10:30-11:00 UTC; i cron di GitHub ritardano spesso). Legge gli ultimi 7 giorni.
+    # La prima run con tutte le fonti invia; le altre vedono l'email già inviata e si fermano.
+    # Dalle 18 UTC si invia anche se ne manca una.
+    - cron: "37 13 * * 1"
+    - cron: "37 15 * * 1"
+    - cron: "7 18 * * 1"
   workflow_dispatch:
     inputs:
       forza:
-        description: "Invia anche se l'email di oggi è già partita o manca una newsletter"
+        description: "Invia anche se l'email della settimana è già partita o manca una newsletter"
         type: boolean
         default: false
 
@@ -39,7 +40,7 @@ jobs:
           GMAIL_LETTURA_PASSWORD: ${{ secrets.GMAIL_LETTURA_PASSWORD }}
           GMAIL_MITTENTE: ${{ secrets.GMAIL_MITTENTE }}
           GMAIL_PASSWORD: ${{ secrets.GMAIL_PASSWORD }}
-        run: python -m aggregator.main ${{ inputs.forza && '--forza' || '' }}
+        run: python -m aggregator.main --settimana ${{ inputs.forza && '--forza' || '' }}
       # CSV e log restano 30 giorni tra gli "artifact" della run (il repo è
       # pubblico: i dati non vengono mai salvati nel repository).
       - uses: actions/upload-artifact@v4

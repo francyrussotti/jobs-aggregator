@@ -1,4 +1,5 @@
 import unittest
+import unittest.mock
 
 from aggregator.filters import CONTROLLARE, ESCLUSO, MATCH, Filtro, deduplica
 from aggregator.main import carica_config
@@ -183,6 +184,53 @@ class TestImap(unittest.TestCase):
         self.assertTrue(all(c[0] in ("select", "SEARCH", "FETCH") for c in imap.comandi))
         self.assertEqual((email[0].data, email[0].oggetto), ("2026-11-04", "Paris Jobs 04/11"))
         self.assertEqual(len(parse_paris(email[0]).offerte), 2)
+
+
+class TestSettimanale(unittest.TestCase):
+    """Edizione settimanale (dal 10/11/2026): 7 giorni, una email, nessun doppione tra giorni."""
+
+    def prepara(self, tmp, mail):
+        import json
+        from pathlib import Path
+        for i, (giorno, oggetto, testo) in enumerate(mail):
+            (Path(tmp) / f"{i}.json").write_text(json.dumps({
+                "id": str(i), "date": f"{giorno}T10:00:00+01:00", "sender": "jobnewsletter.fra@gmail.com",
+                "subject": oggetto, "html": "", "text": testo}), encoding="utf-8")
+
+    def lancia(self, mail, data="2026-11-09"):
+        import tempfile
+        from pathlib import Path
+        from aggregator.main import main
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as out:
+            self.prepara(tmp, mail)
+            # il riepilogo del lunedì legge file di GitHub: nei test niente rete
+            with unittest.mock.patch("aggregator.weekly.aziende_senza_annunci", side_effect=RuntimeError("offline")):
+                main(["--settimana", "--data", data, "--cartella", tmp, "--uscita", out, "--no-email",
+                      "--config", str(__import__("aggregator").__path__[0] + "/../config.yaml")])
+            return {f.name: f.read_text(encoding="utf-8") for f in Path(out).iterdir()}
+
+    PARIS_MAIL = "PARIS JOB NEWSLETTER\n\n== Ashby (1) ==\n- Dust — Innovation Consultant [ruolo target]\n  Paris · {d}\n  https://jobs.ashbyhq.com/dust/1\n"
+
+    def test_stessa_offerta_in_giorni_diversi_conta_una_volta(self):
+        out = self.lancia([("2026-11-05", "Paris Jobs 05/11", self.PARIS_MAIL.format(d="2026-11-04")),
+                           ("2026-11-07", "Paris Jobs 07/11", self.PARIS_MAIL.format(d="2026-11-04"))])
+        log = out["log_2026-11-09.txt"]
+        self.assertIn("1 match", log)                       # una sola offerta, non due
+        self.assertIn("duplicato", out["excluded_log.csv"])
+        self.assertIn("jobs_2026-11-09.csv", out)           # un solo CSV della settimana
+        self.assertNotIn("jobs_2026-11-05.csv", out)
+
+    def test_fonte_mai_arrivata_nella_settimana_e_segnalata(self):
+        out = self.lancia([("2026-11-05", "Paris Jobs 05/11", self.PARIS_MAIL.format(d="2026-11-04"))])
+        html = out["email_2026-11-09.html"]
+        self.assertIn("Newsletter non arrivata questa settimana", html)
+        self.assertIn("Big4 Jobs", html)
+        self.assertIn("Aziende Target", html)
+        self.assertNotIn("Paris Jobs, ", html)              # Paris è arrivata
+
+    def test_fuori_dai_7_giorni_non_conta(self):
+        out = self.lancia([("2026-11-02", "Paris Jobs 02/11", self.PARIS_MAIL.format(d="2026-11-01"))])   # 7 giorni prima
+        self.assertIn("0 match", out["log_2026-11-09.txt"])
 
 
 if __name__ == "__main__":

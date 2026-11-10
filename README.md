@@ -1,6 +1,6 @@
 # Jobs Aggregator
 
-Legge ogni giorno da Gmail (IMAP in sola lettura) le tre newsletter di offerte
+Legge **una volta a settimana** (lunedì, dal 10/11/2026) da Gmail (IMAP in sola lettura) le tre newsletter di offerte degli ultimi 7 giorni
 — **Big4 Jobs**, **Paris Jobs**, **Aziende Target** — le porta in un formato
 comune, toglie i doppioni, le filtra e invia un'unica email con due sezioni:
 **Match** e **Da controllare**. Nessun punteggio, nessun ordinamento per
@@ -49,9 +49,9 @@ Secret del repository (Settings → Secrets and variables → Actions):
 
 ## Esecuzione
 
-- Automatica: `.github/workflows/daily.yml` parte alle 13:37, 15:37 e 18:07 UTC.
+- Automatica: `.github/workflows/daily.yml` parte ogni lunedì alle 13:37, 15:37 e 18:07 UTC (`--settimana`: ultimi 7 giorni).
   Se manca una newsletter aspetta la run successiva; dalle 18 UTC invia comunque,
-  indicando quale manca. Una sola email al giorno.
+  indicando quale manca. Una sola email a settimana.
 - A mano: Actions → "Jobs Aggregator" → Run workflow (opzione "forza").
 - In locale:
 

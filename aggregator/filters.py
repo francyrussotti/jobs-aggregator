@@ -148,13 +148,14 @@ def chiave_dedup(o):
     return (re.sub(r"[^a-z0-9]+", " ", az).strip(), ruolo.strip(), sede.strip())
 
 
-def deduplica(offerte, ordine_fonti):
+def deduplica(offerte, ordine_fonti, per_giorno=True):
     """Tiene la prima per chiave, nell'ordine delle fonti di config.yaml.
+    per_giorno=False (edizione settimanale): la stessa offerta in giorni diversi conta una volta, vince la prima.
     → (uniche, doppioni) dove i doppioni hanno già il motivo."""
     rango = {f: i for i, f in enumerate(ordine_fonti)}
     viste, uniche, doppioni = {}, [], []
     for o in sorted(offerte, key=lambda x: (x.data, rango.get(x.fonte, 99))):
-        k = (o.data,) + chiave_dedup(o)
+        k = ((o.data,) if per_giorno else ()) + chiave_dedup(o)
         if k in viste:
             o.sezione, o.motivo = ESCLUSO, f"duplicato (già presente da {viste[k].fonte})"
             doppioni.append(o)
