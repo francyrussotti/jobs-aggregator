@@ -1,6 +1,8 @@
 """Esecuzione: python -m aggregator.main [--data YYYY-MM-DD] [--giorni N] [--cartella DIR] [--no-email]
 
 - senza opzioni: newsletter di oggi da Gmail, email inviata (una volta al giorno)
+- --settimana: edizione settimanale (dal 10/11/2026): le newsletter degli ultimi 7 giorni che finiscono con --data,
+  una sola email con le offerte della settimana senza doppioni, più il riepilogo del lunedì
 - --giorni N: rielabora gli N giorni che finiscono con --data (nessuna email)
 - --cartella DIR: legge email salvate in JSON invece di Gmail
 """
@@ -49,6 +51,7 @@ def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", help="giorno (YYYY-MM-DD), default oggi")
     ap.add_argument("--giorni", type=int, default=1)
+    ap.add_argument("--settimana", action="store_true", help="edizione settimanale: ultimi 7 giorni, una email")
     ap.add_argument("--cartella", help="email salvate in JSON (al posto di Gmail)")
     ap.add_argument("--uscita", default=str(RADICE / "output"))
     ap.add_argument("--no-email", action="store_true")
@@ -74,24 +77,41 @@ def main(argv=None):
         from .gmail_reader import LettoreGmail
         lettore = LettoreGmail(cfg)
 
-    invio = args.giorni == 1 and not args.no_email
+    sett = args.settimana
+    n_giorni = 7 if sett else args.giorni
+    invio = (args.giorni == 1 or sett) and not args.no_email
     data_it = oggi.strftime("%d/%m/%Y")
-    base_oggetto = f"{cfg['email']['oggetto']} {data_it}"
+    inizio = oggi - timedelta(days=n_giorni - 1)
+    # oggetto solo ASCII: serve anche alla ricerca IMAP "già inviata"
+    base_oggetto = (f"{cfg['email']['oggetto']} settimana {inizio:%d/%m}-{data_it}" if sett
+                    else f"{cfg['email']['oggetto']} {data_it}")
     if invio and not args.forza and lettore.gia_inviata(base_oggetto):
-        log(f"Email di oggi ({data_it}) già inviata: niente da fare.")
+        log(f"Email {'della settimana' if sett else 'di oggi'} ({base_oggetto}) già inviata: niente da fare.")
         return 0
 
     filtro = Filtro(cfg)
-    giorni = [oggi - timedelta(days=i) for i in range(args.giorni - 1, -1, -1)]
+    giorni = [oggi - timedelta(days=i) for i in range(n_giorni - 1, -1, -1)]
     valutate, escluse_log, mancanti_oggi = [], [], []
+    fonti_viste = set()
+    ordine = [v["fonte"] for v in cfg["newsletter"]]
     for g in giorni:
         uniche, doppioni, mancanti = elabora_giorno(cfg, lettore, filtro, g, log)
         mancanti_oggi = mancanti
-        ordinate = report.ordina(uniche, [v["fonte"] for v in cfg["newsletter"]])
-        report.scrivi_csv(uscita / f"jobs_{g.isoformat()}.csv",
-                          [o for o in ordinate if o.sezione != ESCLUSO], report.COLONNE_TRACKER)
+        fonti_viste |= set(ordine) - set(mancanti)
+        if not sett:
+            ordinate = report.ordina(uniche, ordine)
+            report.scrivi_csv(uscita / f"jobs_{g.isoformat()}.csv",
+                              [o for o in ordinate if o.sezione != ESCLUSO], report.COLONNE_TRACKER)
         valutate.extend(uniche)
         escluse_log.extend([o for o in uniche if o.sezione == ESCLUSO] + doppioni)
+    if sett:
+        # la stessa offerta in giorni diversi conta una volta (le escluse dai filtri sono già in escluse_log);
+        # manca solo una fonte che non è arrivata in nessuno dei 7 giorni
+        valutate, doppi_sett = deduplica([o for o in valutate if o.sezione != ESCLUSO], ordine, per_giorno=False)
+        escluse_log.extend(doppi_sett)
+        mancanti_oggi = [f for f in ordine if f not in fonti_viste]
+        report.scrivi_csv(uscita / f"jobs_{oggi.isoformat()}.csv", report.ordina(valutate, ordine),
+                          report.COLONNE_TRACKER)
 
     ordine = [v["fonte"] for v in cfg["newsletter"]]
     escluse_log = report.ordina(escluse_log, ordine)
@@ -103,7 +123,7 @@ def main(argv=None):
         f" offerte lette · {len(match)} match · {len(controllare)} da controllare · "
         f"{len(escluse_log)} escluse (di cui {sum(1 for o in escluse_log if o.motivo.startswith('duplicato'))} doppioni)")
 
-    if invio and mancanti_oggi and not args.forza:
+    if invio and mancanti_oggi and not args.forza:   # (settimanale: solo se non è arrivata in tutta la settimana)
         limite = cfg["attesa"]["invia_comunque_dopo_ora_utc"]
         if datetime.now(timezone.utc).hour < limite:
             log(f"Mancano {', '.join(mancanti_oggi)}: aspetto la prossima run (invio comunque "
@@ -112,7 +132,7 @@ def main(argv=None):
             return 0
 
     lunedi = None
-    if oggi.weekday() == 0 and cfg.get("lunedi", {}).get("attivo") and args.giorni == 1:
+    if oggi.weekday() == 0 and cfg.get("lunedi", {}).get("attivo") and (args.giorni == 1 or sett):
         from . import weekly
         try:
             scelte = weekly.aziende_senza_annunci(cfg, oggi.isocalendar()[1])
@@ -121,10 +141,11 @@ def main(argv=None):
         except Exception as e:   # il riepilogo non deve bloccare l'email del giorno
             log(f"Riepilogo del lunedì non disponibile: {e}")
 
-    titolo_giorno = data_it if args.giorni == 1 else \
+    titolo_giorno = f"Settimana {inizio:%d/%m}–{data_it}" if sett else data_it if args.giorni == 1 else \
         f"{giorni[0].strftime('%d/%m')}–{data_it} ({args.giorni} giorni)"
     html, testo = report.componi_email(titolo_giorno, match, controllare, len(escluse_log),
-                                       mancanti_oggi if args.giorni == 1 else [], lunedi)
+                                       mancanti_oggi if (args.giorni == 1 or sett) else [], lunedi,
+                                       "questa settimana" if sett else "oggi")
     (uscita / f"email_{oggi.isoformat()}.html").write_text(html, encoding="utf-8")
     (uscita / f"log_{oggi.isoformat()}.txt").write_text("\n".join(righe_log), encoding="utf-8")
 

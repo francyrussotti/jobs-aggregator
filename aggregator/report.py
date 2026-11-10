@@ -75,14 +75,14 @@ def _sezione_testo(titolo, offerte, con_motivo):
     return "\n".join(righe)
 
 
-def componi_email(giorno_txt, match, controllare, n_escluse, mancanti, lunedi=None):
+def componi_email(giorno_txt, match, controllare, n_escluse, mancanti, lunedi=None, quando="oggi"):
     """→ (html, testo)"""
     sans = "font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;"
     esc = html_lib.escape
     avviso = ""
     if mancanti:
         avviso = (f'<p style="{sans}font-size:13px;color:#92400e;border-left:3px solid #f59e0b;'
-                  f'padding-left:10px;">Newsletter non arrivata oggi: {esc(", ".join(mancanti))}.</p>')
+                  f'padding-left:10px;">Newsletter non arrivata {quando}: {esc(", ".join(mancanti))}.</p>')
     corpo_lunedi, testo_lunedi = "", ""
     if lunedi:
         corpo_lunedi, testo_lunedi = lunedi
@@ -101,7 +101,7 @@ def componi_email(giorno_txt, match, controllare, n_escluse, mancanti, lunedi=No
     testo = "\n\n".join(x for x in [
         f"JOBS AGGREGATOR — {giorno_txt}",
         f"{len(match)} match · {len(controllare)} da controllare · {n_escluse} escluse",
-        f"Newsletter non arrivata oggi: {', '.join(mancanti)}" if mancanti else "",
+        f"Newsletter non arrivata {quando}: {', '.join(mancanti)}" if mancanti else "",
         _sezione_testo(MATCH, match, False),
         _sezione_testo(CONTROLLARE, controllare, True),
         testo_lunedi] if x)

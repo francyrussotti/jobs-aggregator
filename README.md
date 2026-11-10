@@ -1,6 +1,6 @@
 # Jobs Aggregator
 
-Legge ogni giorno da Gmail (IMAP in sola lettura) le tre newsletter di offerte
+Legge **una volta a settimana** (lunedì, dal 10/11/2026) da Gmail (IMAP in sola lettura) le tre newsletter di offerte degli ultimi 7 giorni
 — **Big4 Jobs**, **Paris Jobs**, **Aziende Target** — le porta in un formato
 comune, toglie i doppioni, le filtra e invia un'unica email con due sezioni:
 **Match** e **Da controllare**. Nessun punteggio, nessun ordinamento per
