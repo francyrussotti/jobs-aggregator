@@ -49,7 +49,7 @@ Secret del repository (Settings → Secrets and variables → Actions):
 
 ## Esecuzione
 
-- Automatica: `.github/workflows/daily.yml` parte alle 13:37, 15:37 e 18:07 UTC.
+- Automatica: `.github/workflows/daily.yml` parte ogni lunedì alle 13:37, 15:37 e 18:07 UTC (`--settimana`: ultimi 7 giorni).
   Se manca una newsletter aspetta la run successiva; dalle 18 UTC invia comunque,
   indicando quale manca. Una sola email al giorno.
 - A mano: Actions → "Jobs Aggregator" → Run workflow (opzione "forza").
